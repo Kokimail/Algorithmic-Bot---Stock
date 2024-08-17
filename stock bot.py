@@ -37,3 +37,5 @@ bars = data_client.get_stock_bars(request_params)
 bars.df
 
 print(bars.df)
+
+#changes

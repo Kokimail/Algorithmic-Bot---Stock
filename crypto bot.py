@@ -20,7 +20,7 @@ symbol = 'BTC/USD'
 
 # Create timezone-aware start and end times
 now = datetime.now(timezone.utc)
-start_time = (now - timedelta(minutes=2)).isoformat()
+start_time = (now - timedelta(minutes=10)).isoformat()
 
 # Create a request for the latest minute bar for Bitcoin
 bar_request = CryptoBarsRequest(
@@ -33,6 +33,8 @@ bar_request = CryptoBarsRequest(
 # Fetch the bar data
 try:
     bars = data_client.get_crypto_bars(bar_request)
-    print(f"The current price of Bitcoin (BTC) is: ${bars}")
+    print(bars.df) 
+    print(f"The current price of Bitcoin (BTC) is: ${bars.df.iloc[-1].close}")
+
 except Exception as e:
     print(f"Error fetching price: {e}")

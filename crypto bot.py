@@ -5,6 +5,7 @@ from alpaca.data.historical import CryptoHistoricalDataClient
 from alpaca.data.requests import CryptoBarsRequest
 from alpaca.data.timeframe import TimeFrame
 from datetime import datetime, timezone, timedelta
+import pandas as pd
 
 # setting API properties
 API_KEY = 'PK2I5CCKUGXSDUMF5729'
@@ -33,8 +34,9 @@ bar_request = CryptoBarsRequest(
 # Fetch the bar data
 try:
     bars = data_client.get_crypto_bars(bar_request)
-    print(bars.df) 
-    print(f"The current price of Bitcoin (BTC) is: ${bars.df.iloc[-1].close}")
+    df = pd.DataFrame(bars.df)
+    print(df) 
+    print(f"The current price of Bitcoin (BTC) is: ${df.iloc[-1].close} at {df.index.get_level_values('timestamp')[-1]}")
 
 except Exception as e:
-    print(f"Error fetching price: {e}")
+    print(f"Error: {e}")

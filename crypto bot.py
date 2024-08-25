@@ -21,7 +21,7 @@ symbol = 'BTC/USD'
 
 # Create timezone-aware start and end times
 now = datetime.now(timezone.utc)
-start_time = (now - timedelta(minutes=10)).isoformat()
+start_time = (now - timedelta(minutes=30)).isoformat()
 
 # Create a request for the latest minute bar for Bitcoin
 bar_request = CryptoBarsRequest(
@@ -36,7 +36,12 @@ try:
     bars = data_client.get_crypto_bars(bar_request)
     df = pd.DataFrame(bars.df)
     print(df) 
-    print(f"The current price of Bitcoin (BTC) is: ${df.iloc[-1].close} at {df.index.get_level_values('timestamp')[-1]}")
+    print(f"The current price of Bitcoin (BTC) is: ${df.iloc[-1].close} at {df.index.get_level_values('timestamp')[-1]} which is a {round((df.iloc[-1].close-df.iloc[0].close)*100/df.iloc[0].close,2)}% variance from {df.index.get_level_values('timestamp')[0]}")
 
 except Exception as e:
     print(f"Error: {e}")
+
+# Set up schedule to execute bot
+
+import time
+    

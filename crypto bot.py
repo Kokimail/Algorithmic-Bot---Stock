@@ -25,15 +25,11 @@ symbol = 'BTC/USD'
 def execute_bot():
 
     # Create timezone-aware start and end times
-    m = 30 #set minutes delta
-    mh = m//2 #set halftime
+    m_1 = 15+3 #set minutes delta
+    m_2 = m_1*2 #set minutes delta x2
     now = datetime.now(timezone.utc)
-    start_time_1 = (now - timedelta(minutes=mh)).isoformat() #15 minutes ago
-    start_time_2 = (now - timedelta(minutes=m)).isoformat() #30 minutes ago
-
-    print(now)
-    print(start_time_1)
-    print(start_time_2)
+    start_time_1 = (now - timedelta(minutes=m_1)).isoformat() #15 minutes ago
+    start_time_2 = (now - timedelta(minutes=m_2)).isoformat() #30 minutes ago
 
     # Create a request for the latest minute bar for Bitcoin
     bar_request_1 = CryptoBarsRequest(
@@ -47,7 +43,7 @@ def execute_bot():
         symbol_or_symbols=symbol,
         timeframe=TimeFrame.Minute,
         start= start_time_2,
-        end = start_time_1
+        end = now.isoformat()
     )
 
     # Fetch the bar data
@@ -57,12 +53,15 @@ def execute_bot():
 
         df_1 = pd.DataFrame(bars_1.df)
         df_2 = pd.DataFrame(bars_2.df)
-        print(df_1)
-        print(df_2)
-        return_1 = (df_1.iloc[-1].close-df_1.iloc[0].close)*100/df_1.iloc[0].close #return for first half of time table
-        return_2 = (df_2.iloc[-1].close-df_2.iloc[0].close)*100/df_2.iloc[0].close #return for second half of time table
-        print(f"The current price of Bitcoin (BTC) is: ${df_1.iloc[-1].close} at {df_1.index.get_level_values('timestamp')[-1]} which is a {round(return_1,2)}% variance from {df_1.index.get_level_values('timestamp')[0]}")
-        print(f"The current price of Bitcoin (BTC) was: ${df_2.iloc[-1].close} at {df_2.index.get_level_values('timestamp')[-1]} which is a {round(return_2,2)}% variance from {df_2.index.get_level_values('timestamp')[0]}")
+
+        delay_1 = ((df_1.index.get_level_values('timestamp')[-1] - df_1.index.get_level_values('timestamp')[0]).total_seconds())/60
+        delay_2 = ((df_2.index.get_level_values('timestamp')[-1] - df_2.index.get_level_values('timestamp')[0]).total_seconds())/60
+
+        return_1 = (df_1.iloc[-1].close-df_1.iloc[0].close)*100/df_1.iloc[0].close #return from the last m mins
+        return_2 = (df_2.iloc[-1].close-df_2.iloc[0].close)*100/df_2.iloc[0].close #return from the last m x 2 mins
+        print(f"""The current price of Bitcoin (BTC) is: ${df_1.iloc[-1].close} at {df_1.index.get_level_values('timestamp')[-1]} 
+              {round(return_1,2)}% variance from {round(delay_1)} mins ago at {df_1.index.get_level_values('timestamp')[0]}
+              {round(return_2,2)}% variance from {round(delay_2)} mins ago at {df_2.index.get_level_values('timestamp')[0]}""")
         print("Bot executed at", time.ctime())
     except Exception as e:
         print(f"Error: {e}")

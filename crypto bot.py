@@ -22,6 +22,8 @@ symbol = 'BTC/USD'
 
 # defining bot
 
+i = -1
+
 def execute_bot():
 
     # Create timezone-aware start and end times
@@ -70,19 +72,20 @@ def execute_bot():
               {round(return_2,2)}% variance from {m*2} to {m} mins ago at {delay_2}""")
         
         # Execute buy, sell, pass
-        if return_1 > 0 and return_2 > 0:
+        
+        if return_1 > 0 and return_2 > 0 and i == -1:
             print("buy")
-        elif return_1 < 0 and return_2 < 0:
+            i = i*-1
+        elif return_1 < 0 and return_2 < 0 and i == 1:
             print("sell")
+            i = i*-1
         else:
             print("pass")
-
         print("Bot executed at", time.ctime())
     except Exception as e:
         print(f"Error: {e}")
-
 execute_bot()
-
+print(i) 
 # Set up schedule to execute bot
 
 #while True:

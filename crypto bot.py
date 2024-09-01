@@ -25,43 +25,58 @@ symbol = 'BTC/USD'
 def execute_bot():
 
     # Create timezone-aware start and end times
-    m_1 = 15+3 #set minutes delta
-    m_2 = m_1*2 #set minutes delta x2
     now = datetime.now(timezone.utc)
-    start_time_1 = (now - timedelta(minutes=m_1)).isoformat() #15 minutes ago
-    start_time_2 = (now - timedelta(minutes=m_2)).isoformat() #30 minutes ago
+    start_time = (now - timedelta(minutes=60)).isoformat()
 
     # Create a request for the latest minute bar for Bitcoin
-    bar_request_1 = CryptoBarsRequest(
+    bar_request = CryptoBarsRequest(
         symbol_or_symbols=symbol,
         timeframe=TimeFrame.Minute,
-        start= start_time_1,
-        end = now.isoformat()
-    )
-
-    bar_request_2 = CryptoBarsRequest(
-        symbol_or_symbols=symbol,
-        timeframe=TimeFrame.Minute,
-        start= start_time_2,
+        start= start_time,
         end = now.isoformat()
     )
 
     # Fetch the bar data
     try:
-        bars_1 = data_client.get_crypto_bars(bar_request_1)
-        bars_2 = data_client.get_crypto_bars(bar_request_2)
+        bars = data_client.get_crypto_bars(bar_request)
 
-        df_1 = pd.DataFrame(bars_1.df)
-        df_2 = pd.DataFrame(bars_2.df)
+        df = pd.DataFrame(bars.df)
 
-        delay_1 = ((df_1.index.get_level_values('timestamp')[-1] - df_1.index.get_level_values('timestamp')[0]).total_seconds())/60
-        delay_2 = ((df_2.index.get_level_values('timestamp')[-1] - df_2.index.get_level_values('timestamp')[0]).total_seconds())/60
+        print(df)
 
-        return_1 = (df_1.iloc[-1].close-df_1.iloc[0].close)*100/df_1.iloc[0].close #return from the last m mins
-        return_2 = (df_2.iloc[-1].close-df_2.iloc[0].close)*100/df_2.iloc[0].close #return from the last m x 2 mins
-        print(f"""The current price of Bitcoin (BTC) is: ${df_1.iloc[-1].close} at {df_1.index.get_level_values('timestamp')[-1]} 
-              {round(return_1,2)}% variance from {round(delay_1)} mins ago at {df_1.index.get_level_values('timestamp')[0]}
-              {round(return_2,2)}% variance from {round(delay_2)} mins ago at {df_2.index.get_level_values('timestamp')[0]}""")
+        # Generate a complete datetime index from start to finish at one-minute intervals
+        start = df.index.get_level_values('timestamp').min()
+        end = df.index.get_level_values('timestamp').max()
+        complete_index = pd.date_range(start=start, end=end, freq = 'T') # 'T' for minute frequency
+
+        # Reindex btc_df using complete time index
+        btc_df = df.loc['BTC/USD']
+        btc_df_reindexed = btc_df.reindex(complete_index)
+
+        # Interpolate missing values linearly
+        df_interpolated = btc_df_reindexed.interpolate(method='linear')
+
+        # Pulls index (timestamp) from m minutes ago
+        m = 15
+        delay_1 = df_interpolated.index[-1] - timedelta(minutes=m)
+        delay_2 = df_interpolated.index[-1] - timedelta(minutes=m*2)
+
+        # Set returns
+        return_1 = (df_interpolated.iloc[-1].close-df_interpolated.loc[delay_1].close)*100/df_interpolated.loc[delay_1].close #return from the last m mins
+        return_2 = (df_interpolated.loc[delay_1].close-df_interpolated.loc[delay_2].close)*100/df_interpolated.loc[delay_2].close #return from m x 2 mins ago to return_1
+
+        print(f"""The current price of Bitcoin (BTC) is: ${df_interpolated.iloc[-1].close} at {df_interpolated.index[-1]} 
+              {round(return_1,2)}% variance from {m} mins ago at {delay_1}
+              {round(return_2,2)}% variance from {m*2} to {m} mins ago at {delay_2}""")
+        
+        # Execute buy, sell, pass
+        if return_1 > 0 and return_2 > 0:
+            print("buy")
+        elif return_1 < 0 and return_2 < 0:
+            print("sell")
+        else:
+            print("pass")
+
         print("Bot executed at", time.ctime())
     except Exception as e:
         print(f"Error: {e}")

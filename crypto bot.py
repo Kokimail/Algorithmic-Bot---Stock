@@ -26,7 +26,7 @@ def execute_bot():
 
     # Create timezone-aware start and end times
     now = datetime.now(timezone.utc)
-    start_time = (now - timedelta(minutes=60)).isoformat()
+    start_time = (now - timedelta(minutes=70)).isoformat()
 
     # Create a request for the latest minute bar for Bitcoin
     bar_request = CryptoBarsRequest(
@@ -57,7 +57,7 @@ def execute_bot():
         df_interpolated = btc_df_reindexed.interpolate(method='linear')
 
         # Pulls index (timestamp) from m minutes ago
-        m = 15
+        m = 30
         delay_1 = df_interpolated.index[-1] - timedelta(minutes=m)
         delay_2 = df_interpolated.index[-1] - timedelta(minutes=m*2)
 

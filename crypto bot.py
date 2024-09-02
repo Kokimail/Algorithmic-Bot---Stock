@@ -22,9 +22,10 @@ symbol = 'BTC/USD'
 
 # defining bot
 
+a = 0
 i = -1
 
-def execute_bot():
+def execute_bot(a):
 
     # Create timezone-aware start and end times
     now = datetime.now(timezone.utc)
@@ -71,25 +72,40 @@ def execute_bot():
               {round(return_1,2)}% variance from {m} mins ago at {delay_1}
               {round(return_2,2)}% variance from {m*2} to {m} mins ago at {delay_2}""")
         
-        # Execute buy, sell, pass
-        
+        # Return result based on return_1 and return_2
         if return_1 > 0 and return_2 > 0 and i == -1:
-            print("buy")
-            i = i*-1
+            a = "up"
         elif return_1 < 0 and return_2 < 0 and i == 1:
-            print("sell")
-            i = i*-1
+            a = "down"
         else:
-            print("pass")
-        print("Bot executed at", time.ctime())
-    except Exception as e:
+            a = "null"
+        return a
+    
+    except Exception as e:  
         print(f"Error: {e}")
-execute_bot()
-print(i) 
+
+def procurement_bot(result):
+    global i
+    if i == -1 and result == "up":
+        print("buy")
+        i *= -1
+    elif i == 1 and result == "down":
+        print("sell")
+        i *= -1
+    else:
+        print("pass")
+
+result = execute_bot(a)
+
+print(result)
+
+procurement_bot(result)
+
 # Set up schedule to execute bot
 
 #while True:
     #execute_bot()
     #time.sleep(1800) #sleep for 1800 seconds (30 minutes)
+    #print("Bot executed at", time.ctime())
 
 # ctrl + c on terminal to break the loop

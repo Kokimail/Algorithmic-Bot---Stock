@@ -28,8 +28,9 @@ i = -1
 def execute_bot(a):
 
     # Create timezone-aware start and end times
+    m = 15
     now = datetime.now(timezone.utc)
-    start_time = (now - timedelta(minutes=70)).isoformat()
+    start_time = (now - timedelta(minutes=m*2+10)).isoformat()
 
     # Create a request for the latest minute bar for Bitcoin
     bar_request = CryptoBarsRequest(
@@ -60,7 +61,6 @@ def execute_bot(a):
         df_interpolated = btc_df_reindexed.interpolate(method='linear')
 
         # Pulls index (timestamp) from m minutes ago
-        m = 30
         delay_1 = df_interpolated.index[-1] - timedelta(minutes=m)
         delay_2 = df_interpolated.index[-1] - timedelta(minutes=m*2)
 
@@ -93,19 +93,19 @@ def procurement_bot(result):
         print("sell")
         i *= -1
     else:
-        print("pass")
+        print("hold")
 
-result = execute_bot(a)
-
-print(result)
-
-procurement_bot(result)
+#result = execute_bot(a)
+#print(result)
+#procurement_bot(result)
 
 # Set up schedule to execute bot
 
-#while True:
-    #execute_bot()
-    #time.sleep(1800) #sleep for 1800 seconds (30 minutes)
-    #print("Bot executed at", time.ctime())
+while True:
+    result = execute_bot(a)
+    print(result)
+    procurement_bot(result)
+    print("Bot executed at", time.ctime())
+    time.sleep(900) #sleep for 900 seconds (15 minutes)
 
 # ctrl + c on terminal to break the loop

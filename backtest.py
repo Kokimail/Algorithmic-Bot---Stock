@@ -56,8 +56,33 @@ df_15m = df_interpolated.resample('15T').agg({
 
 df_15m['close_change'] = df_15m['close'].diff()
 df_15m['return'] = df_15m['close'].pct_change()
+df_15m['previous_return'] = df_15m['return'].shift(1)
 
 print(df_15m)
 
 # Simulating trading
-investment = 1000
+initial_capital = 1000
+cash = initial_capital
+btc_held = 0
+i = -1
+t = 0
+
+for index, row in df_15m.iterrows():
+    if row['return'] > 0 and row['previous_return'] > 0 and i == -1: # Buy signal
+        btc_held = cash / row['close']
+        cash = 0 # Invest all cash
+        i = i*-1
+        t = t+1
+    elif row['return'] < 0 and row['previous_return'] < 0 and i == 1: # Sell signal
+        cash = btc_held * row['close']
+        btc_held = 0 # Sell all holdings
+        i = i*-1
+        t = t+1
+    else:
+        pass
+
+final_value = cash if cash > 0 else btc_held * df_15m.iloc[-1]['close']
+print(f"Final portfolio value: ${final_value:.2f} from an initial capital of ${initial_capital} with {t} transactions")
+
+
+

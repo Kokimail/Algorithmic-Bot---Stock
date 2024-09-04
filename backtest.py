@@ -18,7 +18,7 @@ data_client = CryptoHistoricalDataClient(API_KEY,API_SECRET)
 # Define the symbol for Bitcoin and the exchange
 symbol = 'BTC/USD'
 start_date = '2024-01-01T00:00Z'
-end_date = '2024-01-01T23:59:59Z'
+end_date = '2024-01-31T23:59:59Z'
 
 # Fetch historical data
 test_bar_request = CryptoBarsRequest(
@@ -58,7 +58,8 @@ df_15m['close_change'] = df_15m['close'].diff()
 df_15m['return'] = df_15m['close'].pct_change()
 df_15m['previous_return'] = df_15m['return'].shift(1)
 
-print(df_15m)
+#print(df_15m)
+#df_15m.to_csv('test.csv')
 
 # Simulating trading
 initial_capital = 1000
@@ -81,8 +82,10 @@ for index, row in df_15m.iterrows():
     else:
         pass
 
+# Calculate the final value of the portfolio
 final_value = cash if cash > 0 else btc_held * df_15m.iloc[-1]['close']
-print(f"Final portfolio value: ${final_value:.2f} from an initial capital of ${initial_capital} with {t} transactions")
+final_return = (final_value - initial_capital)/initial_capital
+print(f"Final portfolio value: ${final_value:.2f} or {round(final_return*100,2)}% return from an initial capital of ${initial_capital} with {t} transactions")
 
 
 

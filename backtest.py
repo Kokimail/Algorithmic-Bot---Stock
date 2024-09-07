@@ -5,6 +5,7 @@ from alpaca.data.timeframe import TimeFrame
 from datetime import datetime, timezone, timedelta
 import pandas as pd
 import time
+import numpy as np
 
 # setting API properties
 API_KEY = 'PK2I5CCKUGXSDUMF5729'
@@ -54,11 +55,17 @@ df_15m = df_interpolated.resample('15T').agg({
     'volume': 'first'
 })
 
+# Create fields required for strategy execution
 df_15m['close_change'] = df_15m['close'].diff()
 df_15m['return'] = df_15m['close'].pct_change()
 df_15m['previous_return'] = df_15m['return'].shift(1)
+df_15m['close_executed'] = 0 # placeholder
+df_15m['close_executed_differential'] = 0 # placeholder
+df_15m['investment_value'] = 0  # placeholder
+df_15m['investment_return_dollar'] = 0 # placeholder
+df_15m['investment_return'] = 0 # placeholder
 
-#print(df_15m)
+print(df_15m)
 #df_15m.to_csv('test.csv')
 
 # Simulating trading
@@ -67,25 +74,70 @@ cash = initial_capital
 btc_held = 0
 i = -1
 t = 0
+last_close_executed = None
+investment_purchase = None
+investment_value = None
+investment_return_dollar = None
+
 
 for index, row in df_15m.iterrows():
     if row['return'] > 0 and row['previous_return'] > 0 and i == -1: # Buy signal
         btc_held = cash / row['close']
         cash = 0 # Invest all cash
-        i = i*-1
-        t = t+1
+        df_15m.at[index, 'close_executed'] = row['close'] # Update the DataFram directly with the executed price
+        last_close_executed = row['close']
+        df_15m.at[index, 'investment_value'] = int(investment_value)
+        investment_purchase = investment_value
+        i *= -1
+        t += 1
     elif row['return'] < 0 and row['previous_return'] < 0 and i == 1: # Sell signal
         cash = btc_held * row['close']
         btc_held = 0 # Sell all holdings
-        i = i*-1
-        t = t+1
+        df_15m.at[index, 'close_executed'] = -row['close'] # Update the DataFram directly with the executed price
+        df_15m.at[index, 'close_executed_differential'] = int(row['close']-last_close_executed) # Update the DataFram directly with executed return
+        investment_value = (1+row['return'])*investment_value
+        df_15m.at[index, 'investment_value'] = int(investment_value)
+        investment_return_dollar = investment_value - investment_purchase
+        df_15m.at[index, 'investment_return_dollar'] = int(investment_return_dollar)
+        i *= -1
+        t += 1
     else:
-        pass
+        if t == 0:
+            investment_value = cash
+            df_15m.at[index,'investment_value'] = int(investment_value)
+        elif i == 1: 
+            investment_value = (1+row['return'])*investment_value
+            df_15m.at[index,'investment_value'] = int(investment_value)
+        else:
+            df_15m.at[index,'investment_value'] = int(investment_value)
+
+df_15m['investment_return'] = df_15m['investment_value'].pct_change()
+
+print(df_15m)
+df_15m.to_csv('test.csv')
 
 # Calculate the final value of the portfolio
 final_value = cash if cash > 0 else btc_held * df_15m.iloc[-1]['close']
 final_return = (final_value - initial_capital)/initial_capital
-print(f"Final portfolio value: ${final_value:.2f} or {round(final_return*100,2)}% return from an initial capital of ${initial_capital} with {t} transactions")
+span = end - start
+print(f"Final portfolio value: ${final_value:.2f} or {round(final_return*100,2)}% return from an initial capital of ${initial_capital} with {t} transactions in a span of {span}")
+print()
 
 
+# For purpose of analysis
+# Sharpe Ratio = (return of the portfolio - risk free rate) / standard deviation of the portfolio's excess returns (volatility)
+average_return = df_15m['investment_return'].mean()*365 
+print("Average Return: ", average_return)
 
+# Assume a risk-free rate of 4.23% - long-term average of 10 year treasury rate
+risk_free_rate = 0.0423
+print("Risk-Free Rate: ", risk_free_rate)
+
+# Calculate the standard deviation of returns (volatility)
+volatility = df_15m['investment_return'].std()*np.sqrt(365)
+print("Annualized Volatility: ", volatility)
+
+# Calculate the Sharpe Ratio (annualized)
+sharpe_ratio = (average_return - risk_free_rate) / volatility
+
+print(f"Sharpe Ratio: {round(sharpe_ratio,2)}")

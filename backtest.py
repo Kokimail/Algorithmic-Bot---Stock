@@ -19,7 +19,7 @@ data_client = CryptoHistoricalDataClient(API_KEY,API_SECRET)
 # Define the symbol for Bitcoin and the exchange
 symbol = 'BTC/USD'
 start_date = '2024-01-01T00:00Z'
-end_date = '2024-01-31T23:59:59Z'
+end_date = '2024-06-30T23:59:59Z'
 
 # Fetch historical data
 test_bar_request = CryptoBarsRequest(
@@ -65,7 +65,7 @@ df_15m['investment_value'] = 0  # placeholder
 df_15m['investment_return_dollar'] = 0 # placeholder
 df_15m['investment_return'] = 0 # placeholder
 
-print(df_15m)
+#print(df_15m)
 #df_15m.to_csv('test.csv')
 
 # Simulating trading
@@ -113,31 +113,44 @@ for index, row in df_15m.iterrows():
 
 df_15m['investment_return'] = df_15m['investment_value'].pct_change()
 
-print(df_15m)
-df_15m.to_csv('test.csv')
+#print(df_15m)
+#df_15m.to_csv('test.csv')
 
 # Calculate the final value of the portfolio
 final_value = cash if cash > 0 else btc_held * df_15m.iloc[-1]['close']
 final_return = (final_value - initial_capital)/initial_capital
 span = end - start
 print(f"Final portfolio value: ${final_value:.2f} or {round(final_return*100,2)}% return from an initial capital of ${initial_capital} with {t} transactions in a span of {span}")
-print()
+
+
 
 
 # For purpose of analysis
 # Sharpe Ratio = (return of the portfolio - risk free rate) / standard deviation of the portfolio's excess returns (volatility)
-average_return = df_15m['investment_return'].mean()*365 
-print("Average Return: ", average_return)
+grouped_day = df_15m.groupby(df_15m.index.date).sum()
+
+#print(grouped_day)
+#grouped_day.to_csv('test_2.csv')
+
+grouped_month = df_15m.groupby(pd.Grouper(freq='M')).sum()
+
+#print(grouped_month)
+#grouped_month.to_csv('test_3')
+
+# Calculate the necessary metrics
+mean_return = grouped_month['investment_return'].mean()
+print("Mean Return (monthly): ", mean_return)
 
 # Assume a risk-free rate of 4.23% - long-term average of 10 year treasury rate
 risk_free_rate = 0.0423
-print("Risk-Free Rate: ", risk_free_rate)
+monthly_risk_free_rate = (1+risk_free_rate)**(1/12)-1
+print("Risk-Free Rate (monthly): ", monthly_risk_free_rate)
 
 # Calculate the standard deviation of returns (volatility)
-volatility = df_15m['investment_return'].std()*np.sqrt(365)
-print("Annualized Volatility: ", volatility)
+std_dev = grouped_month['investment_return'].std()
+print("Standard Deviation: ", std_dev) 
 
 # Calculate the Sharpe Ratio (annualized)
-sharpe_ratio = (average_return - risk_free_rate) / volatility
+sharpe_ratio = (mean_return - monthly_risk_free_rate) / std_dev
 
 print(f"Sharpe Ratio: {round(sharpe_ratio,2)}")

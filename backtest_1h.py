@@ -110,7 +110,7 @@ print(f"Final portfolio value: ${final_value:.2f} or {round(final_return*100,2)}
 
 # For purpose of analysis
 # Sharpe Ratio = (return of the portfolio - risk free rate) / standard deviation of the portfolio's excess returns (volatility)
-grouped_day = df.groupby(df.index.date).sum()
+#grouped_day = df.groupby(df.index.date).sum()
 
 #print(grouped_day)
 #grouped_day.to_csv('test_2.csv')

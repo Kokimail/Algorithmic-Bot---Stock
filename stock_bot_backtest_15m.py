@@ -6,6 +6,7 @@ from datetime import datetime
 import pandas as pd
 import time
 import numpy as np
+import os
 
 # setting API properties
 API_KEY = 'PK2I5CCKUGXSDUMF5729'
@@ -16,17 +17,13 @@ BASE_URL = 'https://paper-api.alpaca.markets/v2'
 trading_client = TradingClient(API_KEY,API_SECRET, paper=True)
 data_client = StockHistoricalDataClient(API_KEY,API_SECRET)
 
-# Define the symbol for Bitcoin and the exchange
-symbol = 'SPY'
-start_date = '2024-01-01T00:00Z'
-end_date = '2024-01-01T23:59:59Z'
-
 # Fetch historical data
+
 test_bar_request = StockBarsRequest(
-    symbol_or_symbols = ["SPY"],
+    symbol_or_symbols = ["AMZN"],
     timeframe = TimeFrame.Minute,
-    start = datetime(2022,7,1),
-    end = datetime(2022,9,1)
+    start = datetime(2022,1,1),
+    end = datetime(2024,6,30)
 )
 
 test_bars = data_client.get_stock_bars(test_bar_request)
@@ -34,7 +31,7 @@ test_bars = data_client.get_stock_bars(test_bar_request)
 # Convert data to DataFrame
 df = pd.DataFrame(test_bars.df)
 print(df)
-df.to_csv('test.csv')
+df.to_csv('C:/Users/kokik/OneDrive/Documents/GitHub/Algorithmic-Bot/stock_df_raw.csv')
 
 # Generate a complete datetime index from start to finish at one-minute intervals
 start = df.index.get_level_values('timestamp').min()
@@ -42,11 +39,11 @@ end = df.index.get_level_values('timestamp').max()
 complete_index = pd.date_range(start=start, end=end, freq = 'T') # 'T' for minute frequency
 
 # Reindex btc_df using complete time index
-spy_df = df.loc['SPY']
-spy_df_reindexed = spy_df.reindex(complete_index)
+stock_df = df.loc['AMZN']
+df_reindexed = stock_df.reindex(complete_index)
 
 # Interpolate missing values linearly
-df_interpolated = spy_df_reindexed.interpolate(method='linear')
+df_interpolated = df_reindexed.interpolate(method='linear')
 
 # Resample data to 15-minute intervals
 df = df_interpolated.resample('15T').agg({
@@ -113,15 +110,19 @@ for index, row in df.iterrows():
 df['investment_return'] = df['investment_value'].pct_change()
 
 print(df)
-df.to_csv('test_2.csv')
+df.to_csv('C:/Users/kokik/OneDrive/Documents/GitHub/Algorithmic-Bot/stock_df.csv')
 
 # Calculate the final value of the portfolio
 final_value = cash if cash > 0 else btc_held * df.iloc[-1]['close']
 final_return = (final_value - initial_capital)/initial_capital
 
+default_value = (1+(df.iloc[-1]['close']-df.iloc[0]['close'])/df.iloc[0]['close'])*initial_capital
+default_return = (df.iloc[-1]['close']-df.iloc[0]['close'])/df.iloc[0]['close']
+
 span = end - start
 
 print(f"Final portfolio value: ${final_value:.2f} or {round(final_return*100,2)}% return from an initial capital of ${initial_capital} with {t} transactions in a span of {span}")
+print(f"Default portfolio value: ${default_value:.2f} or {round(default_return*100,2)}% return from an initial capital of ${initial_capital} with 1 transactions in a span of {span}") # If you were to just buy the stock and hold 
 
 # For purpose of analysis
 # Sharpe Ratio = (return of the portfolio - risk free rate) / standard deviation of the portfolio's excess returns (volatility)

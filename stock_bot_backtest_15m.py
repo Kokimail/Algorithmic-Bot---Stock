@@ -1,3 +1,20 @@
+'''
+Multiple Linear Regression
+Y = b0 + b1X1 + b2X2 + ... bpXp + e
+Y = dependent variable (prediction)
+X1, X2,..., Xn = independent variables (predictors)
+B0 = Y-intercept of the regression line: expected value of Y when all the X values are 0
+B1, B2,..., Bn = coefficients of the independent variables: represents the change in the dependent variable for one unit change in the corresponding independent variable (assuming all other variables are held constant)
+e = error: variability in Y that cannot be explained by the linear relationship with the X variables
+
+
+In our model, these represent:
+Y = return
+X1 = delay timing
+X2 = number of correspondence
+X3 = percentage threshold
+'''
+
 from alpaca.trading.client import TradingClient
 from alpaca.data.historical import StockHistoricalDataClient
 from alpaca.data.requests import StockBarsRequest
@@ -17,21 +34,30 @@ BASE_URL = 'https://paper-api.alpaca.markets/v2'
 trading_client = TradingClient(API_KEY,API_SECRET, paper=True)
 data_client = StockHistoricalDataClient(API_KEY,API_SECRET)
 
-# Fetch historical data
+# Set variables to fetch historical data
+start_datetime = datetime(2024,1,1)
+end_datetime = datetime(2024,6,30)
+stock = "META"
 
 test_bar_request = StockBarsRequest(
-    symbol_or_symbols = ["AMZN"],
+    symbol_or_symbols = [stock],
     timeframe = TimeFrame.Minute,
-    start = datetime(2022,1,1),
-    end = datetime(2024,6,30)
+    start = start_datetime,
+    end = end_datetime
 )
 
 test_bars = data_client.get_stock_bars(test_bar_request)
 
 # Convert data to DataFrame
 df = pd.DataFrame(test_bars.df)
-print(df)
-df.to_csv('C:/Users/kokik/OneDrive/Documents/GitHub/Algorithmic-Bot/stock_df_raw.csv')
+#print(df)
+#df.to_csv('C:/Users/kokik/OneDrive/Documents/GitHub/Algorithmic-Bot/stock_df_raw.csv')
+
+
+# Set variables to configure backtest
+delay_timing = "15T" # 15-minutes intervals
+succession = 2 # number of ups/downs in a row for execution
+percentage_threshold = 0.001 # percentage threshold for execution
 
 # Generate a complete datetime index from start to finish at one-minute intervals
 start = df.index.get_level_values('timestamp').min()
@@ -39,14 +65,14 @@ end = df.index.get_level_values('timestamp').max()
 complete_index = pd.date_range(start=start, end=end, freq = 'T') # 'T' for minute frequency
 
 # Reindex btc_df using complete time index
-stock_df = df.loc['AMZN']
+stock_df = df.loc[stock]
 df_reindexed = stock_df.reindex(complete_index)
 
 # Interpolate missing values linearly
 df_interpolated = df_reindexed.interpolate(method='linear')
 
 # Resample data to 15-minute intervals
-df = df_interpolated.resample('15T').agg({
+df = df_interpolated.resample(delay_timing).agg({
     'open': 'first',
     'high': 'first',
     'low': 'first',
@@ -64,6 +90,22 @@ df['investment_value'] = 0  # placeholder
 df['investment_return_dollar'] = 0 # placeholder
 df['investment_return'] = 0 # placeholder
 
+print(df.head())
+print(df['return'].dtype)
+
+# Function to determine if all returns in the window are consistently positive or negative
+def check_consistency(values):
+    if (values > 0 ).all():
+        return 1 # All Positive 
+    elif (values < 0).all():
+        return -1 # All Negative
+    else:
+        return 0 # Mixed
+    
+df['consistency'] = df['return'].rolling(window=succession).apply(lambda window: check_consistency(window), raw=False) # Apply the function over a rollwing window
+
+print(df[['return', 'consistency']])
+
 # Simulating trading
 initial_capital = 1000
 cash = initial_capital
@@ -77,7 +119,7 @@ investment_return_dollar = None
 
 
 for index, row in df.iterrows():
-    if row['return'] > 0 and row['previous_return'] > 0 and i == -1: # Buy signal
+    if row['consistency'] > 0 and i == -1: # Buy signal
         btc_held = cash / row['close']
         cash = 0 # Invest all cash
         df.at[index, 'close_executed'] = row['close'] # Update the DataFram directly with the executed price
@@ -86,7 +128,7 @@ for index, row in df.iterrows():
         investment_purchase = investment_value
         i *= -1
         t += 1
-    elif row['return'] < 0 and row['previous_return'] < 0 and i == 1: # Sell signal
+    elif row['consistency'] < 0 and i == 1: # Sell signal
         cash = btc_held * row['close']
         btc_held = 0 # Sell all holdings
         df.at[index, 'close_executed'] = -row['close'] # Update the DataFram directly with the executed price

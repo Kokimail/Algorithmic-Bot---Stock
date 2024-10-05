@@ -56,7 +56,7 @@ df = pd.DataFrame(test_bars.df)
 
 # Set variables to configure backtest
 delay_timing = "15T" # 15-minutes intervals
-succession = 3 # number of ups/downs in a row for execution
+succession = 2 # number of ups/downs in a row for execution
 percentage_threshold = 0.000 # percentage threshold for execution
 
 # Generate a complete datetime index from start to finish at one-minute intervals

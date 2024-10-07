@@ -38,28 +38,29 @@ BASE_URL = 'https://paper-api.alpaca.markets/v2'
 trading_client = TradingClient(API_KEY,API_SECRET, paper=True)
 data_client = StockHistoricalDataClient(API_KEY,API_SECRET)
 
-# Set variables to fetch historical data
-start_datetime = datetime(2024,1,1)
-end_datetime = datetime(2024,6,30)
-stock = "META"
 
-test_bar_request = StockBarsRequest(
-    symbol_or_symbols = [stock],
-    timeframe = TimeFrame.Minute,
-    start = start_datetime,
-    end = end_datetime
-)
+'''
+Set data fetch function
+'''
+def get_stock_data (stock, start_datetime, end_datetime):
+    test_bar_request = StockBarsRequest(
+        symbol_or_symbols = [stock],
+        timeframe = TimeFrame.Minute,
+        start = start_datetime,
+        end = end_datetime
+    )
 
-test_bars = data_client.get_stock_bars(test_bar_request)
+    test_bars = data_client.get_stock_bars(test_bar_request)
 
-# Convert data to DataFrame
-df = pd.DataFrame(test_bars.df)
+    # Convert data to DataFrame
+    df = pd.DataFrame(test_bars.df)
 
-# Ignore FutureWarnings
-warnings.simplefilter(action='ignore', category=FutureWarning)
+    # Ignore FutureWarnings
+    warnings.simplefilter(action='ignore', category=FutureWarning)
 
-#print(df)
-#df.to_csv('C:/Users/kokik/OneDrive/Documents/GitHub/Algorithmic-Bot/stock_df_raw.csv')
+    return df
+    #print(df)
+    #df.to_csv('C:/Users/kokik/OneDrive/Documents/GitHub/Algorithmic-Bot/stock_df_raw.csv')
 
 
 '''
@@ -190,23 +191,31 @@ def momentum_trading_backtest(delay_timing, succession, percentage_threshold, df
 '''
 Run backtest over a range of parameters
 '''
+
+# Set variables to fetch historical data
+stocks = ["SPY", "AAPL", "AMZN"]
+start_datetime = datetime(2024,1,1)
+end_datetime = datetime(2024,6,30)
+
+stock_data = {stock: get_stock_data(stock, start_datetime, end_datetime) for stock in stocks}
+
 # Set variables to configure backtest
-results = []
 delay_timings = ['1T', '5T', '15T', '30T', '1H']
 successions = [1, 2, 3]
 percentage_thresholds = [0.000, 0.001, 0.005, 0.01]
+results = [] # Leave this blank
 
-for delay_timing in delay_timings:
-    for succession in successions:
-        for percentage_threshold in percentage_thresholds:
-            roi = momentum_trading_backtest(delay_timing, succession, percentage_threshold, df)
-            results.append((delay_timing, succession, percentage_threshold, roi))
+# Run backtest
+for stock in stocks:
+    df = stock_data[stock]
+    for delay_timing in delay_timings:
+        for succession in successions:
+            for percentage_threshold in percentage_thresholds:
+                roi = momentum_trading_backtest(delay_timing, succession, percentage_threshold, df)
+                results.append((stock, delay_timing, succession, percentage_threshold, roi))
 
 results_df = pd.DataFrame(results, columns = ['delay_timing', 'succession', 'percentage_threshold', 'roi'])
 print(results_df)
+results_df.to_csv('C:/Users/kokik/OneDrive/Documents/GitHub/Algorithmic-Bot/results_df.csv')
 
-
-
-
-
-    
+   

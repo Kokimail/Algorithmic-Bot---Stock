@@ -193,9 +193,9 @@ Run backtest over a range of parameters
 '''
 
 # Set variables to fetch historical data
-stocks = ["SPY", "AAPL", "AMZN"]
-start_datetime = datetime(2024,1,1)
-end_datetime = datetime(2024,6,30)
+stocks = ["NVDA", "TSLA", "MSFT", "AAPL", "AMD"] # rest of the list:  "AMZN", "SMCI", "META", "MSTR", "AVGO", "SPY"
+start_datetime = datetime(2021,10,1)
+end_datetime = datetime(2024,9,30)
 
 stock_data = {stock: get_stock_data(stock, start_datetime, end_datetime) for stock in stocks}
 
@@ -214,7 +214,7 @@ for stock in stocks:
                 roi = momentum_trading_backtest(delay_timing, succession, percentage_threshold, df)
                 results.append((stock, delay_timing, succession, percentage_threshold, roi))
 
-results_df = pd.DataFrame(results, columns = ['delay_timing', 'succession', 'percentage_threshold', 'roi'])
+results_df = pd.DataFrame(results, columns = ['stock', 'delay_timing', 'succession', 'percentage_threshold', 'roi'])
 print(results_df)
 results_df.to_csv('C:/Users/kokik/OneDrive/Documents/GitHub/Algorithmic-Bot/results_df.csv')
 

@@ -25,6 +25,10 @@ import numpy as np
 import os
 import warnings
 
+'''
+Fetch current directory
+'''
+current_directory = os.path.dirname(os.path.abspath(__file__)) # for the purpose of setting file_path
 
 '''
 Fetch historical data
@@ -54,13 +58,11 @@ def get_stock_data (stock, start_datetime, end_datetime):
 
     # Convert data to DataFrame
     df = pd.DataFrame(test_bars.df)
-
+    print(df)
     # Ignore FutureWarnings
     warnings.simplefilter(action='ignore', category=FutureWarning)
 
     return df
-    #print(df)
-    #df.to_csv('C:/Users/kokik/OneDrive/Documents/GitHub/Algorithmic-Bot/stock_df_raw.csv')
 
 
 '''
@@ -97,8 +99,11 @@ def momentum_trading_backtest(delay_timing, succession, percentage_threshold, df
     df['investment_value'] = 0  # placeholder
     df['investment_return_dollar'] = 0 # placeholder
     df['investment_return'] = 0 # placeholder
+    df['sec_fee'] = 0 # placeholder
+    df['finra_fee'] = 0 # placeholder
+    df['total_fees'] = 0 # placeholder
 
-    # Function to determine if all returns in the window are consistently positive or negative and
+    # Function to determine if all returns in the window are consistently positive or negative
     def check_consistency(values):
         if (values > 0 ).all():
             return 1 # All Positive 
@@ -123,27 +128,38 @@ def momentum_trading_backtest(delay_timing, succession, percentage_threshold, df
     investment_purchase = None
     investment_value = None
     investment_return_dollar = None
+    sec_fee = None
+    finra_fee = None
+    total_fees = None
 
 
     for index, row in df.iterrows():
         if row['consistency'] > 0 and row['threshold_met'] == True and i == -1: # Buy signal
-            btc_held = cash / row['close']
-            cash = 0 # Invest all cash
             df.at[index, 'close_executed'] = row['close'] # Update the DataFram directly with the executed price
             last_close_executed = row['close']
             df.at[index, 'investment_value'] = int(investment_value)
             investment_purchase = investment_value
+            btc_held = cash / row['close']
+            cash = 0 # Invest all cash
             i *= -1
             t += 1
         elif row['consistency'] < 0 and row['threshold_met'] == True and i == 1: # Sell signal
-            cash = btc_held * row['close']
-            btc_held = 0 # Sell all holdings
             df.at[index, 'close_executed'] = -row['close'] # Update the DataFram directly with the executed price
             df.at[index, 'close_executed_differential'] = int(row['close']-last_close_executed) # Update the DataFram directly with executed return
-            investment_value = (1+row['return'])*investment_value
+            investment_value = (1+row['return'])*investment_value # would be investment value without the fees
+            investment_return_dollar = investment_value - investment_purchase # would be return dollar value without the fees
+            sec_fee = 0.0000278*investment_value # 27.80 per $1,000,000 of principal (sells only) (https://files.alpaca.markets/disclosures/library/BrokerAPIExhibitB.pdf)
+            df.at[index, 'sec_fee'] = int(sec_fee)
+            finra_fee = 0.000166*cash/row['close'] # 0.000166 per share (sells only) (https://files.alpaca.markets/disclosures/library/BrokerAPIExhibitB.pdf)
+            df.at[index, 'finra_fee'] = int(finra_fee)
+            total_fees = sec_fee + finra_fee # calculate the total fees
+            df.at[index, 'total_fee'] = int(total_fees)
+            investment_value = investment_value - total_fees # incorporating fees to investment value
             df.at[index, 'investment_value'] = int(investment_value)
-            investment_return_dollar = investment_value - investment_purchase
+            investment_return_dollar = investment_return_dollar - total_fees # incorporating fees to return dollar value
             df.at[index, 'investment_return_dollar'] = int(investment_return_dollar)
+            cash = btc_held * row['close'] - total_fees # cash value minus the fees
+            btc_held = 0 # Sell all holdings
             i *= -1
             t += 1
         else:
@@ -157,6 +173,11 @@ def momentum_trading_backtest(delay_timing, succession, percentage_threshold, df
                 df.at[index,'investment_value'] = int(investment_value)
 
     df['investment_return'] = df['investment_value'].pct_change()
+
+    #filename_stock = df['symbol'].iloc[0]
+    #filename = f"{filename_stock}_{delay_timing}_{succession}_{percentage_threshold}.csv"
+    #file_path = os.path.join(current_directory, filename)
+    #df.to_csv(file_path)
 
     # Calculate the final value of the portfolio
     final_value = cash if cash > 0 else btc_held * df.iloc[-1]['close']
@@ -216,5 +237,6 @@ for stock in stocks:
 
 results_df = pd.DataFrame(results, columns = ['stock', 'delay_timing', 'succession', 'percentage_threshold', 'roi'])
 print(results_df)
-results_df.to_csv('/Users/koki/Documents/GitHub/Algorithmic-Bot/results_df.csv')
+file_path = os.path.join(current_directory,"results_df.csv")
+results_df.to_csv(file_path)
 

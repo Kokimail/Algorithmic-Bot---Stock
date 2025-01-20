@@ -59,6 +59,7 @@ def get_stock_data (stock, start_datetime, end_datetime):
     # Convert data to DataFrame
     df = pd.DataFrame(test_bars.df)
     print(df)
+    print(df.index.get_level_values('symbol')[0])
     # Ignore FutureWarnings
     warnings.simplefilter(action='ignore', category=FutureWarning)
 
@@ -74,6 +75,7 @@ def momentum_trading_backtest(delay_timing, succession, percentage_threshold, df
     start = df.index.get_level_values('timestamp').min()
     end = df.index.get_level_values('timestamp').max()
     complete_index = pd.date_range(start=start, end=end, freq = 'T') # 'T' for minute frequency
+    df['symbol'] = df.index.get_level_values('symbol')
 
     # Reindex btc_df using complete time index
     stock_df = df.loc[stock]
@@ -84,6 +86,7 @@ def momentum_trading_backtest(delay_timing, succession, percentage_threshold, df
 
     # Resample data to 15-minute intervals
     df = df_interpolated.resample(delay_timing).agg({
+        'symbol': 'first',
         'open': 'first',
         'high': 'first',
         'low': 'first',
@@ -174,10 +177,10 @@ def momentum_trading_backtest(delay_timing, succession, percentage_threshold, df
 
     df['investment_return'] = df['investment_value'].pct_change()
 
-    #filename_stock = df['symbol'].iloc[0]
-    #filename = f"{filename_stock}_{delay_timing}_{succession}_{percentage_threshold}.csv"
-    #file_path = os.path.join(current_directory, filename)
-    #df.to_csv(file_path)
+    filename_stock = df['symbol'].iloc[0]
+    filename = f"{filename_stock}_{delay_timing}_{succession}_{percentage_threshold}.csv"
+    file_path = os.path.join(current_directory, filename)
+    df.to_csv(file_path)
 
     # Calculate the final value of the portfolio
     final_value = cash if cash > 0 else btc_held * df.iloc[-1]['close']

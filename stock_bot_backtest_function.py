@@ -152,15 +152,15 @@ def momentum_trading_backtest(delay_timing, succession, percentage_threshold, df
             investment_value = (1+row['return'])*investment_value # would be investment value without the fees
             investment_return_dollar = investment_value - investment_purchase # would be return dollar value without the fees
             sec_fee = 0.0000278*investment_value # 27.80 per $1,000,000 of principal (sells only) (https://files.alpaca.markets/disclosures/library/BrokerAPIExhibitB.pdf)
-            df.at[index, 'sec_fee'] = int(sec_fee)
-            finra_fee = 0.000166*cash/row['close'] # 0.000166 per share (sells only) (https://files.alpaca.markets/disclosures/library/BrokerAPIExhibitB.pdf)
-            df.at[index, 'finra_fee'] = int(finra_fee)
+            df.at[index, 'sec_fee'] = sec_fee
+            finra_fee = 0.000166*btc_held # 0.000166 per share (sells only) (https://files.alpaca.markets/disclosures/library/BrokerAPIExhibitB.pdf)
+            df.at[index, 'finra_fee'] = finra_fee
             total_fees = sec_fee + finra_fee # calculate the total fees
-            df.at[index, 'total_fee'] = int(total_fees)
+            df.at[index, 'total_fees'] = total_fees
             investment_value = investment_value - total_fees # incorporating fees to investment value
-            df.at[index, 'investment_value'] = int(investment_value)
+            df.at[index, 'investment_value'] = investment_value
             investment_return_dollar = investment_return_dollar - total_fees # incorporating fees to return dollar value
-            df.at[index, 'investment_return_dollar'] = int(investment_return_dollar)
+            df.at[index, 'investment_return_dollar'] = investment_return_dollar
             cash = btc_held * row['close'] - total_fees # cash value minus the fees
             btc_held = 0 # Sell all holdings
             i *= -1
@@ -178,8 +178,8 @@ def momentum_trading_backtest(delay_timing, succession, percentage_threshold, df
     df['investment_return'] = df['investment_value'].pct_change()
 
     filename_stock = df['symbol'].iloc[0]
-    filename = f"{filename_stock}_{delay_timing}_{succession}_{percentage_threshold}.csv"
-    file_path = os.path.join(current_directory, filename)
+    filename = f"{filename_stock}_{delay_timing}_{succession}_{percentage_threshold}.csv" # file naming convention will be 'stock_delay timing_succession_percentage threshold'
+    file_path = os.path.join(current_directory,'Data dump', filename)
     df.to_csv(file_path)
 
     # Calculate the final value of the portfolio
@@ -219,7 +219,7 @@ Run backtest over a range of parameters
 # Set variables to fetch historical data
 stocks = ["NVDA", "TSLA"] # rest of the list: "MSFT", "AAPL", "AMD", "AMZN", "SMCI", "META", "MSTR", "AVGO", "SPY"
 start_datetime = datetime(2021,1,1)
-end_datetime = datetime(2021,1,30)
+end_datetime = datetime(2021,1,15)
 
 stock_data = {stock: get_stock_data(stock, start_datetime, end_datetime) for stock in stocks}
 
